@@ -1,0 +1,260 @@
+vmctl:
+  get:
+    all:
+      _flags:
+        inherit: true
+      _description: Get a VM with all options
+      script: #TODO
+    help:
+      _flags:
+        inherit: true
+      _description: Get a VM
+      _execute: show_help .path
+      script: #TODO
+    group:
+      _flags:
+        inherit: true
+      _description: Get a VM with group
+      _is_valid_input: validate "vmctl.get.group.value"
+      value: ""
+      _execute: process_group "get" "vmctl.get.group.value" "vmctl.get._flags"
+      name:
+        _description: Get a VM with name
+        value: ""
+        _execute: process_vm "get" "vmctl.get.group.value" "vmctl.get.name.value" "vmctl.get._flags"
+    _description: Get a VM
+    _flags:
+      list:
+        - name: -h
+          _description: Show help message
+        - name: --help
+          _description: Show help message
+  create:
+    help:
+      _flags:
+        inherit: true
+      _description: Create a new VM
+      _execute: show_help .path
+    all:
+      _flags:
+        inherit: true
+      _description: Create a new VM with all options
+    group:
+      _flags:
+        inherit: true
+      _description: Create a new VM with group
+      _execute: process "create" "vmctl.create.group.value" "vmctl.create._flags"
+      name:
+        _description: Name of the VM
+        script: #TODO
+    _description: Create a new VM
+    _flags:
+      inherit: true
+      list:
+        - name: -h
+          _description: Show help message
+        - name: --help
+          _description: Show help message
+
+  start:
+    help:
+      _flags:
+        inherit: true
+      _description: Start a VM
+      _execute: show_help .path
+    all:
+      _flags:
+        inherit: true
+      _description: Start a VM with all options
+    group:
+      _flags:
+        inherit: true
+      _description: Start a VM with group
+      script: #TODO
+      name:
+        _flags:
+          inherit: true
+        _description: Name of the VM
+        script: #TODO
+    _description: Start a VM
+    _flags:
+      list:
+        - name: -h
+          _description: Show help message
+        - name: --help
+          _description: Show help message
+  delete:
+    help:
+      _flags:
+        inherit: true
+      _description: Delete a VM
+      _execute: show_help .path
+    all:
+      _flags:
+        inherit: true
+      _description: Delete a VM with all options
+    group:
+      _flags:
+        inherit: true
+      _description: Delete a VM with group
+      script: #TODO
+      name:
+        _flags:
+          inherit: true
+        _description: Name of the VM
+        script: #TODO
+    _description: Delete a VM
+    _flags:
+      list:
+        - name: -h
+          _description: Show help message
+        - name: --help
+          _description: Show help message
+
+  stop:
+    help:
+      _flags:
+        inherit: true
+      _description: Stop a VM
+      _execute: show_help .path
+    all:
+      _flags:
+        inherit: true
+      _description: Stop a VM with all options
+    group:
+      _flags:
+        inherit: true
+      _description: Stop a VM with group
+      script: #TODO
+      name:
+        _flags:
+          inherit: true
+        _description: Name of the VM
+        script: #TODO
+    _description: Stop a VM
+    _flags:
+      list:
+        - name: -h
+          _description: Show help message
+        - name: --help
+          _description: Show help message
+  restart:
+    help:
+      _flags:
+        inherit: true
+      _description: Restart a VM
+      _execute: show_help .path
+    all:
+      _flags:
+        inherit: true
+      _description: Restart a VM with all options
+    group:
+      _flags:
+        inherit: true
+      _description: Restart a VM with group
+      script: #TODO
+      name:
+        _flags:
+          inherit: true
+        _description: Name of the VM
+        script: #TODO
+    _description: Restart a VM
+    _flags:
+      list:
+        - name: -h
+          _description: Show help message
+        - name: --help
+          _description: Show help message
+
+  _execute:
+    help:
+      _flags:
+        inherit: true
+      _description: _execute a command in a VM
+      _execute: show_help .path
+    all:
+      _flags:
+        inherit: true
+      _description: _execute a command in a VM with all options
+    group:
+      _flags:
+        inherit: true
+      _description: _execute a command in a VM with group
+      script: #TODO
+      name:
+        _flags:
+          inherit: true
+        _description: Name of the VM
+        script: #TODO
+    _description: _execute a command in a VM
+    _flags:
+      list:
+        - name: -h
+          _description: Show help message
+        - name: --help
+          _description: Show help message
+  config:
+    get:
+      _flags:
+        inherit: true
+      _description: Get the configuration of a VM
+      all:
+        _flags:
+          inherit: true
+        _description: Get the configuration of a VM with all options
+        _execute: get_config "all"
+      current:
+        _flags:
+          inherit: true
+        _description: Get the current configuration of a VM
+        _execute: get_config "current"
+    set:
+      _flags:
+        inherit: true
+      _description: Set the configuration of a VM
+      config:
+        _flags:
+          inherit: true
+        value: ""
+        _description: Configuration of the VM
+        _execute: set_config vmctl.config.set.config.value
+    clear:
+      _flags:
+        inherit: true
+      _description: Clear the configuration of a VM
+      _execute: clear_config
+    help:
+      _flags:
+        inherit: true
+      _description: Configure a VM
+      _execute: show_help .path
+    _description: Configure a VM
+    _flags:
+      list:
+        - name: -h | --help
+          _description: Show help message
+
+  completion:
+    help:
+      _description: Generate completion script
+      _execute: show_help .path
+    zsh:
+      _description: Generate completion script for zsh
+    _description: Generate completion script
+    _flags:
+      list:
+        - name: -h
+          _description: Show help message
+        - name: --help
+          _description: Show help message
+
+  help:
+    _description: Show help message
+    _execute: show_help .path
+  _flags:
+    list:
+      - name: -h | --help
+        _description: Show help message
+      - name: --version
+        _description: Show version
+  _description: Manage VMs

@@ -1,0 +1,280 @@
+#compdef vmctl
+compdef _vmctl vmctl
+COMMAND_TEMPLATE=""
+CONFIG_FILE=""
+CONFIG_FOLDER=""
+
+function startWith() {
+  case $2 in
+    $1*) true;;
+    *) false;;
+  esac
+}
+
+function build_path_yaml(){
+  local args=("$@")
+  local _path=""
+  for arg in "${args[@]}"; do
+    _path="$_path.$arg"
+  done
+  echo "$_path"
+}
+
+function have_path_yaml(){
+  if [[ $(echo "${COMMAND_TEMPLATE}" | yq e "$1") != "null" ]]; then
+      return 1
+  else
+      return 0
+  fi
+}
+
+
+function get_config() {
+  COMMAND_TEMPLATE=$(cat /Users/noroom113/IdeaProjects/Init-My-Mac/zsh_oh_my_zsh/auto_complete/vmctl/command.yaml);
+  local _path=$HOME/.vmctl/config.yaml
+  if [[ ! -f "$_path" ]]; then
+    mkdir "$HOME/.vmctl" 2&> /dev/null
+    touch "$_path"
+    yq e '
+    .current-context="null" |
+    .contexts = []
+    ' $_path -i
+  fi
+  yq e '.current-context' $_path
+}
+
+
+function init() {
+  CONFIG_FILE=$(get_config)
+  echo $COMMAND_TEMPLATE
+  CONFIG_FOLDER=$(dirname $CONFIG_FILE)
+  if [[ -z "$CONFIG_FILE" ]]; then
+    CONFIG_FOLDER="null"
+  fi
+}
+
+# Helper functions
+get_groups() {
+    local file_configuration="$1"
+    [[ -f $file_configuration ]] && yq e 'keys | .[]' "$file_configuration"
+}
+
+get_names() {
+    local file_configuration="$1" group_name="$2"
+    [[ -f $file_configuration ]] && yq e ".$group_name | keys | .[]" "$file_configuration"
+}
+
+get_scripts() {
+    local file_configuration="$1"
+    local target="$2"
+
+    if [[ ! -f $file_configuration ]]; then
+        echo ""
+        return
+    fi
+
+    if [[ $target == */* ]]; then
+        local group_name=${target%/*}
+        local vm_name=${target#*/}
+
+        while read -r init_script; do
+            echo "init_script.$init_script"
+        done < <(yq e ".$group_name.$vm_name.init_script | keys | .[]" "$file_configuration" 2> /dev/null || true)
+        while read -r script; do
+            echo "scripts.$script"
+        done < <(yq e ".$group_name.$vm_name.scripts | keys | .[]" "$file_configuration" 2> /dev/null || true)
+
+    elif [[ $target == "all" ]]; then
+        yq e 'keys | .[]' "$file_configuration" | while IFS= read -r group_name; do
+            yq e ".$group_name | keys | .[]" "$file_configuration" | while IFS= read -r vm_name; do
+                while read -r init_script; do
+                    echo "init_script.$init_script"
+                done < <(yq e ".$group_name.$vm_name.init_script | keys | .[]" "$file_configuration" 2> /dev/null || true)
+                while read -r script; do
+                    echo "scripts.$script"
+                done < <(yq e ".$group_name.$vm_name.scripts | keys | .[]" "$file_configuration" 2> /dev/null || true)
+            done
+        done
+
+    else
+        local group_name=$target
+        yq e ".$group_name | keys | .[]" "$file_configuration" | while IFS= read -r vm_name; do
+          while read -r init_script; do
+              echo "init_script.$init_script"
+          done < <(yq e ".$group_name.$vm_name.init_script | keys | .[]" "$file_configuration" 2> /dev/null || true)
+          while read -r script; do
+              echo "scripts.$script"
+          done < <(yq e ".$group_name.$vm_name.scripts | keys | .[]" "$file_configuration" 2> /dev/null || true)
+        done
+    fi
+}
+
+function available_flags() {
+  help_str=()
+  local _path="$1"
+  while true; do
+    flags_size=$(echo "$COMMAND_TEMPLATE" | yq e "$_path._flags.list | length")
+    if [[ $flags_size -gt 0 ]]; then
+      for ((i = 0; i < $flags_size; i++)); do
+        if [[ $(echo "$COMMAND_TEMPLATE" | yq e "$_path._flags.list[$i]._description") == *" | "* ]]; then
+          flag_desc=$(echo "$COMMAND_TEMPLATE" | yq e "$_path._flags.list[$i]._description")
+          IFS=' | ' read -r -A flag_names <<< "$(echo "$COMMAND_TEMPLATE" | yq e "$_path._flags.list[$i].name")"
+          for flag in "${flag_names[@]}"; do
+            help_str+=("$flag: $flag_desc")
+          done
+        else
+          help_str+=("$(echo "$COMMAND_TEMPLATE" | yq e "$_path._flags.list[$i].name"): $(echo "$COMMAND_TEMPLATE" | yq e "$_path._flags.list[$i]._description")")
+        fi
+      done
+    fi
+    local inherit="$(echo "$COMMAND_TEMPLATE" | yq e "$_path._flags.inherit")"
+    if [[ $inherit == "true" ]]; then
+      _path=$(echo "$path" | sed 's/\.[^.]*$//')
+    else
+      break
+    fi
+  done
+  # Sort the help string
+  IFS=$'\n' sorted=($(sort <<<"${help_str[*]}"))
+  unset IFS
+  _describe -t flags "flags" sorted
+}
+
+function available_command() {
+  command_str=()
+  local _path="$1"
+  echo "$COMMAND_TEMPLATE"
+  echo "$COMMAND_TEMPLATE" | yq e "$_path"
+  local available_commands=$(echo "$COMMAND_TEMPLATE" | yq e "$_path | length")
+  if [[ $available_commands -gt 0 ]]; then
+    while read -r line; do
+      if startWith "_" "$line"; then
+        continue
+      fi
+
+      command_str+=("$line: $(echo "$COMMAND_TEMPLATE" | yq e "$_path.$line._description")")
+    done <<< "$(echo "$COMMAND_TEMPLATE" | yq e "$_path | keys | .[]")"
+  fi
+
+  # Sort the help string
+  IFS=$'\n' sorted=($(sort <<<"${command_str[*]}"))
+  unset IFS
+  _describe -t commands "commands" sorted
+}
+
+# Main completion function
+_vmctl() {
+    local curcontext="$curcontext" state line
+    typeset -A opt_args
+    init
+    _arguments -C \
+        '*:args:->args'
+
+    local args=()
+    typeset -A flags
+    local flags=()
+    local prev_flag=""
+    
+    for (( i = 1; i < $CURRENT; i++ )); do
+      temp_args=("${args[@]}")
+      temp_args+=("${words[$i]}")
+      if have_path_yaml "$(build_path_yaml "${temp_args[@]}")"; then
+        args+=("${words[$i]}")
+      elif [[ ${words[$i]} == -* ]]; then
+        flags[${words[$i]}]=""
+      elif [[ -n "$prev_flag" ]]; then
+        flags[${prev_flag}]="${words[$i]}"
+        prev_flag=""
+      else
+        prev_flag=""
+        local found_flag=false
+        echo "${args[@]}"
+        if have_path_yaml "$(build_path_yaml "${args[@]}")"; then
+          while read -r line; do
+            if startWith "_" "$line"; then
+              continue
+            fi
+            temp_args=("${args[@]}")
+            temp_args+=("$line")
+            temp_args+=("value")
+            echo "$(build_path_yaml "${temp_args[@]}")"
+            if have_path_yaml "$(build_path_yaml "${temp_args[@]}")"; then
+              args+=("${line}")
+              COMMAND_TEMPLATE=$(echo "${COMMAND_TEMPLATE}" | yq e "$(build_path_yaml "${temp_args[@]}")=\"${words[$i]}\"")
+              found_flag=true
+              break
+            fi
+          done <<< "$(echo "${COMMAND_TEMPLATE}" | yq e "$(build_path_yaml "${args[@]}") | keys | .[]")"
+        fi
+      fi
+    done
+    available_command "$(build_path_yaml "${args[@]}")"
+    available_flags "$(build_path_yaml "${args[@]}")"
+
+
+#    case $state in
+#        command)
+#            local -a commands
+#            commands=(
+#                'create:Tạo mục mới trong file YAML hoặc nhóm'
+#                'start:Khởi động VM có tên hoặc nhóm'
+#                'delete:Xóa mục hoặc nhóm khỏi file YAML'
+#                'stop:Dừng VM có tên hoặc nhóm'
+#                'execute:Thực thi lệnh trên VM có tên hoặc nhóm'
+#                'help:Hiển thị trợ giúp'
+#            )
+#            _describe -t commands 'vmctl command' commands
+#            ;;
+#        target)
+#            local config_file=${words[3]}
+#            if [[ -f $config_file ]]; then
+#                local -a targets
+#                targets=("all:All groups and VMs")
+#                if [[ ${words[CURRENT]} == */* ]]; then
+#                    local group=${words[CURRENT]%%/*}
+#                    while IFS= read -r name; do
+#                        targets+=("$group/$name:VM in $group")
+#                    done < <(get_names "$config_file" "$group")
+#                else
+#                    while IFS= read -r group; do
+#                        targets+=("$group:Group of VMs")
+#                    done < <(get_groups "$config_file")
+#                fi
+#                _describe -t targets "target" targets
+#            fi
+#            ;;
+#        args)
+#            local config_file=${words[3]}
+#            local command=${words[2]}
+#            local target=${words[4]}
+#            if [[ ${words[CURRENT]} == -* ]];  then
+#                local expanded_flags=()
+#                IFS=' ' read -r -A flags_code <<< "${COMMANDS[$command]}"
+#                for flag in "${!FLAGS[@]}"; do
+#                    for flag_code in "${flags_code[@]}"; do
+#                        if [[ $flag_code -eq ${FLAGS[$flag]} ]]; then
+#                          expanded_flags+=("$flag:${FLAGS_DESC[$flag_code]}")
+#                        fi
+#                    done
+#                done
+#                _describe -t expanded_flags "expanded_flags" expanded_flags
+#            else
+#                case ${words[CURRENT - 1]} in
+#                    -s|--script)
+#                        local -a scripts
+#                        while IFS= read -r script; do
+#                            scripts+=("$script:Script for $target")
+#                        done < <(get_scripts "$config_file" "$target")
+#                        _describe -t scripts "script" scripts
+#                        _files -g '*.(#i)sh'
+#                        ;;
+#                    -c|--command)
+#                        _files
+#                        ;;
+#                esac
+#            fi
+#            ;;
+#    esac
+}
+
+_vmctl "$@"
