@@ -1,0 +1,162 @@
+#compdef vmctl
+
+# Helper functions
+get_groups() {
+    local file_configuration="$1"
+    [[ -f $file_configuration ]] && yq e 'keys | .[]' "$file_configuration"
+}
+
+get_names() {
+    local file_configuration="$1" group_name="$2"
+    [[ -f $file_configuration ]] && yq e ".$group_name | keys | .[]" "$file_configuration"
+}
+
+get_scripts() {
+    local file_configuration="$1"
+    local target="$2"
+
+    if [[ ! -f $file_configuration ]]; then
+        echo ""
+        return
+    fi
+
+    if [[ $target == */* ]]; then
+        local group_name=${target%/*}
+        local vm_name=${target#*/}
+
+        while read -r init_script; do
+            echo "init_script.$init_script"
+        done < <(yq e ".$group_name.$vm_name.init_script | keys | .[]" "$file_configuration" 2> /dev/null || true)
+        while read -r script; do
+            echo "scripts.$script"
+        done < <(yq e ".$group_name.$vm_name.scripts | keys | .[]" "$file_configuration" 2> /dev/null || true)
+
+    elif [[ $target == "all" ]]; then
+        yq e 'keys | .[]' "$file_configuration" | while IFS= read -r group_name; do
+            yq e ".$group_name | keys | .[]" "$file_configuration" | while IFS= read -r vm_name; do
+                while read -r init_script; do
+                    echo "init_script.$init_script"
+                done < <(yq e ".$group_name.$vm_name.init_script | keys | .[]" "$file_configuration" 2> /dev/null || true)
+                while read -r script; do
+                    echo "scripts.$script"
+                done < <(yq e ".$group_name.$vm_name.scripts | keys | .[]" "$file_configuration" 2> /dev/null || true)
+            done
+        done
+
+    else
+        local group_name=$target
+        yq e ".$group_name | keys | .[]" "$file_configuration" | while IFS= read -r vm_name; do
+          while read -r init_script; do
+              echo "init_script.$init_script"
+          done < <(yq e ".$group_name.$vm_name.init_script | keys | .[]" "$file_configuration" 2> /dev/null || true)
+          while read -r script; do
+              echo "scripts.$script"
+          done < <(yq e ".$group_name.$vm_name.scripts | keys | .[]" "$file_configuration" 2> /dev/null || true)
+        done
+    fi
+}
+
+# Main completion function
+_vmctl() {
+    local curcontext="$curcontext" state line
+    typeset -A opt_args
+
+    typeset -A COMMANDS
+    COMMANDS=(
+      [create]="0 2"
+      [start]="0"
+      [delete]="0"
+      [stop]="0"
+      [execute]="0 1 2"
+      [help]="0"
+    )
+
+    typeset -A FLAGS_DESC
+    FLAGS_DESC=(
+      [0]='Hiển thị trợ giúp'
+      [1]='Script to execute'
+      [3]='Execute script with sudo'
+    )
+
+    typeset -A FLAGS
+    FLAGS=(
+      [-h]=0
+      [--help]=0
+      [-s]=1
+      [--script]=1
+      [-r]=2
+      [--root]=2
+    )
+
+    _arguments -C \
+        '1:command:->command' \
+        '2:config file:_files -g "*.yaml"' \
+        '3:target:->target' \
+        '*:args:->args'
+
+    case $state in
+        command)
+            local -a commands
+            commands=(
+                'create:Tạo mục mới trong file YAML hoặc nhóm'
+                'start:Khởi động VM có tên hoặc nhóm'
+                'delete:Xóa mục hoặc nhóm khỏi file YAML'
+                'stop:Dừng VM có tên hoặc nhóm'
+                'execute:Thực thi lệnh trên VM có tên hoặc nhóm'
+                'help:Hiển thị trợ giúp'
+            )
+            _describe -t commands 'vmctl command' commands
+            ;;
+        target)
+            local config_file=${words[3]}
+            if [[ -f $config_file ]]; then
+                local -a targets
+                targets=("all:All groups and VMs")
+                if [[ ${words[CURRENT]} == */* ]]; then
+                    local group=${words[CURRENT]%%/*}
+                    while IFS= read -r name; do
+                        targets+=("$group/$name:VM in $group")
+                    done < <(get_names "$config_file" "$group")
+                else
+                    while IFS= read -r group; do
+                        targets+=("$group:Group of VMs")
+                    done < <(get_groups "$config_file")
+                fi
+                _describe -t targets "target" targets
+            fi
+            ;;
+        args)
+            local config_file=${words[3]}
+            local command=${words[2]}
+            local target=${words[4]}
+            if [[ ${words[CURRENT]} == -* ]];  then
+                local expanded_flags=()
+                IFS=' ' read -r -A flags_code <<< "${COMMANDS[$command]}"
+                for flag in "${(k)FLAGS[@]}"; do
+                    for flag_code in "${flags_code[@]}"; do
+                        if [[ $flag_code -eq ${FLAGS[$flag]} ]]; then
+                          expanded_flags+=("$flag:${FLAGS_DESC[$flag_code]}")
+                        fi
+                    done
+                done
+                _describe -t expanded_flags "expanded_flags" expanded_flags
+            else
+                case ${words[CURRENT - 1]} in
+                    -s|--script)
+                        local -a scripts
+                        while IFS= read -r script; do
+                            scripts+=("$script:Script for $target")
+                        done < <(get_scripts "$config_file" "$target")
+                        _describe -t scripts "script" scripts
+                        _files -g '*.(#i)sh'
+                        ;;
+                    -c|--command)
+                        _files
+                        ;;
+                esac
+            fi
+            ;;
+    esac
+}
+
+_vmctl "$@"
