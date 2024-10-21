@@ -32,7 +32,6 @@ func deleteVM(vm model.VirtualMachine) {
 	printcolor.Info(fmt.Sprintf("Deleting VM %s in group %s", vm.Name, vm.Group))
 	if _, _, err := common.ExecShell("limactl", "stop", vm.Name); err != nil {
 		printcolor.Error(fmt.Sprintf("Error deleting VM %s in group %s: %v", vm.Name, vm.Group, err))
-		return
 	}
 	if _, _, err := common.ExecShell("limactl", "delete", vm.Name); err != nil {
 		printcolor.Error(fmt.Sprintf("Error deleting VM %s in group %s: %v", vm.Name, vm.Group, err))

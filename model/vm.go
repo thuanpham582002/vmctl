@@ -1,17 +1,18 @@
 package model
 
 import (
+	"vmctl/pkg/orderedmap"
 	"vmctl/util/config"
 )
 
 type VirtualMachineYaml struct {
-	Template   string            `yaml:"template"`
-	InitScript map[string]Script `yaml:"init_script"`
+	Template   string                                `yaml:"template"`
+	InitScript orderedmap.OrderedMap[string, Script] `yaml:"init_script"`
 }
 
 type VirtualMachine struct {
 	Template   string
-	InitScript map[string]Script
+	InitScript orderedmap.OrderedMap[string, Script]
 	Group      string
 	Name       string
 }

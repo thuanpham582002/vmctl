@@ -58,9 +58,9 @@ func executeCommands(vm model.VirtualMachine, o *ExecuteOptions) {
 		scriptStr := ""
 		root := o.Root
 		err := error(nil)
-		if _, ok := vm.InitScript[command]; ok {
-			root = root || vm.InitScript[command].Root
-			scriptStr, err = vm.InitScript[command].GetCommand()
+		if script, ok := vm.InitScript.Get(command); ok {
+			root = root || script.Root
+			scriptStr, err = script.GetCommand()
 		} else {
 			scriptStr = command
 		}

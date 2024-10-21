@@ -45,7 +45,7 @@ func StartVM(vm model.VirtualMachine) {
 
 func executeInitScripts(vm model.VirtualMachine) []string {
 	var failedScripts []string
-	for key, script := range vm.InitScript {
+	for key, script := range vm.InitScript.FromOldest() {
 		if !script.OnBoot {
 			continue
 		}

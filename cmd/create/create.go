@@ -55,7 +55,7 @@ func createVM(o *CreateOptions) func(vm model.VirtualMachine) {
 
 func executeInitScripts(vm model.VirtualMachine, root bool) []string {
 	var failedScripts []string
-	for key, script := range vm.InitScript {
+	for key, script := range vm.InitScript.FromOldest() {
 		scriptStr, err := script.GetCommand()
 		if err != nil {
 			printcolor.Error(fmt.Sprintf("Error getting script for %s in %s: %v", key, vm.Name, err))
