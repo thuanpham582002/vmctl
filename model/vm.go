@@ -1,7 +1,6 @@
 package model
 
 import (
-	"os"
 	"vmctl/util/config"
 )
 
@@ -18,24 +17,11 @@ type VirtualMachine struct {
 }
 
 func (vm *VirtualMachineYaml) ToVirtualMachine(groupName, vmName string) VirtualMachine {
+	dir, _ := config.GetContextDir()
 	return VirtualMachine{
-		Template:   vm.Template,
+		Template:   dir + "/" + vm.Template,
 		InitScript: vm.InitScript,
 		Group:      groupName,
 		Name:       vmName,
 	}
-}
-
-func (vm *VirtualMachineYaml) Validate() error {
-	// check file template is abstract path or hard path
-	if _, err := os.Stat(vm.Template); err != nil {
-		// do nothing
-	} else {
-		dir, _ := config.GetContextDir()
-		// check file template is exist
-		if _, err := os.Stat(dir + "/" + vm.Template); err != nil {
-			vm.Template = dir + "/" + vm.Template
-		}
-	}
-	return nil
 }

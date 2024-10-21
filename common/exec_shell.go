@@ -2,15 +2,15 @@ package common
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 	"vmctl/util/printcolor"
 )
 
-func ExecShell(command ...string) (string, int, error) {
-	cmdStr := strings.Join(command, " ")
-	cmd := exec.Command("bash", "-c", cmdStr)
+func ExecShell(name string, command ...string) (string, int, error) {
+	cmd := exec.Command(name, command...)
+	printcolor.Info(fmt.Sprintf("Executing command: \n%s", fmt.Sprintf("%s", cmd.String())))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()

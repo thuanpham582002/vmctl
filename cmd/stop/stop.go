@@ -10,13 +10,6 @@ import (
 	"vmctl/util/resource"
 )
 
-type StopOptions struct {
-}
-
-func NewStopOptions() *StopOptions {
-	return &StopOptions{}
-}
-
 func NewCmdStop() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "stop <node_path...>",
@@ -26,18 +19,18 @@ func NewCmdStop() *cobra.Command {
 			if len(args) == 0 {
 				cmd.Help()
 			} else {
-				resource.
-					NewBuilder().
+				resource.NewBuilder().
 					SetNodePaths(args).
-					Do(func(vm model.VirtualMachine) {
-						printcolor.Info(fmt.Sprintf("Stopping VM %s in group %s", vm.Name, vm.Group))
-						if _, _, err := common.ExecShell("limactl", fmt.Sprintf("stop %s", vm.Name)); err != nil {
-							printcolor.Error(fmt.Sprintf("Error stopping VM %s in group %s: %v", vm.Name, vm.Group, err))
-							return
-						}
-					})
+					Do(stopVM)
 			}
 		},
 	}
 	return cmd
+}
+
+func stopVM(vm model.VirtualMachine) {
+	printcolor.Info(fmt.Sprintf("Stopping VM %s in group %s", vm.Name, vm.Group))
+	if _, _, err := common.ExecShell("limactl", "stop", vm.Name); err != nil {
+		printcolor.Error(fmt.Sprintf("Error stopping VM %s in group %s: %v", vm.Name, vm.Group, err))
+	}
 }

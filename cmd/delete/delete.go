@@ -10,13 +10,6 @@ import (
 	"vmctl/util/resource"
 )
 
-type DeleteOptions struct {
-}
-
-func NewDeleteOptions() *DeleteOptions {
-	return &DeleteOptions{}
-}
-
 func NewCmdDelete() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "delete <node_path...>",
@@ -26,22 +19,24 @@ func NewCmdDelete() *cobra.Command {
 			if len(args) == 0 {
 				cmd.Help()
 			} else {
-				resource.
-					NewBuilder().
+				resource.NewBuilder().
 					SetNodePaths(args).
-					Do(func(vm model.VirtualMachine) {
-						printcolor.Info(fmt.Sprintf("Deleting VM %s in group %s", vm.Name, vm.Group))
-						if _, _, err := common.ExecShell("limactl", fmt.Sprintf("stop %s", vm.Name)); err != nil {
-							printcolor.Error(fmt.Sprintf("Error deleting VM %s in group %s: %v", vm.Name, vm.Group, err))
-							return
-						}
-						if _, _, err := common.ExecShell("limactl", fmt.Sprintf("delete %s", vm.Name)); err != nil {
-							printcolor.Error(fmt.Sprintf("Error deleting VM %s in group %s: %v", vm.Name, vm.Group, err))
-							return
-						}
-					})
+					Do(deleteVM)
 			}
 		},
 	}
 	return cmd
+}
+
+func deleteVM(vm model.VirtualMachine) {
+	printcolor.Info(fmt.Sprintf("Deleting VM %s in group %s", vm.Name, vm.Group))
+	if _, _, err := common.ExecShell("limactl", "stop", vm.Name); err != nil {
+		printcolor.Error(fmt.Sprintf("Error deleting VM %s in group %s: %v", vm.Name, vm.Group, err))
+		return
+	}
+	if _, _, err := common.ExecShell("limactl", "delete", vm.Name); err != nil {
+		printcolor.Error(fmt.Sprintf("Error deleting VM %s in group %s: %v", vm.Name, vm.Group, err))
+		return
+	}
+	printcolor.Success(fmt.Sprintf("VM %s in group %s deleted successfully", vm.Name, vm.Group))
 }

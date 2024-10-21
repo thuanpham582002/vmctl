@@ -8,6 +8,8 @@ import (
 )
 
 type Script struct {
+	Root    bool          `yaml:"root"`
+	OnBoot  bool          `yaml:"on_boot"`
 	Command string        `yaml:"command"`
 	Env     []Environment `yaml:"envs"`
 }
@@ -30,6 +32,7 @@ func (s Script) GetCommand() (string, error) {
 
 	// Check if the command is a file
 	if _, err := os.Stat(s.Command); err == nil {
+
 		// Read the file
 		content, err := os.ReadFile(s.Command)
 		if err != nil {
@@ -44,7 +47,19 @@ func (s Script) GetCommand() (string, error) {
 		}
 		scriptText += string(content)
 	} else {
-		scriptText += s.Command
+		configData, err := config.LoadConfigData()
+		if err != nil {
+			return "", err
+		}
+		path, err := yaml.GetValueFromPath(configData, s.Command)
+		if err != nil { // If the command is a plain text
+			scriptText += s.Command
+		}
+		if path == nil {
+			printcolor.Error("Command not found" + s.Command)
+		} else {
+			scriptText += path.(string)
+		}
 	}
 	return scriptText, nil
 }

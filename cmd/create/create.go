@@ -15,9 +15,7 @@ type CreateOptions struct {
 }
 
 func NewCreateOptions() *CreateOptions {
-	return &CreateOptions{
-		Root: false,
-	}
+	return &CreateOptions{}
 }
 
 func NewCmdCreate() *cobra.Command {
@@ -30,38 +28,53 @@ func NewCmdCreate() *cobra.Command {
 			if len(args) == 0 {
 				cmd.Help()
 			} else {
-				resource.
-					NewBuilder().
+				resource.NewBuilder().
 					SetNodePaths(args).
-					Do(func(vm model.VirtualMachine) {
-						printcolor.Info(fmt.Sprintf("Creating VM %s in group %s", vm.Name, vm.Group))
-						if _, _, err := common.ExecShell("limactl", "start", "--name="+vm.Name, vm.Template, "--tty=false"); err != nil {
-							printcolor.Error(fmt.Sprintf("Error creating VM %s in group %s: %v", vm.Name, vm.Group, err))
-							return
-						}
-						for key, script := range vm.InitScript {
-							scriptCommand, err := script.GetCommand()
-							if err != nil {
-								printcolor.Warning(fmt.Sprintf("Error building script for %s in %s: %v", key, vm.Name, err))
-								continue
-							}
-
-							// Tạo chuỗi lệnh để thực thi
-							shellCommand := "bash"
-							if o.Root {
-								shellCommand = "sudo bash"
-							}
-							if _, _, err := common.ExecShell("limactl", "shell", vm.Name, shellCommand, "-c", scriptCommand); err != nil {
-								printcolor.Error(fmt.Sprintf("Error executing script for %s in %s: %v", key, vm.Name, err))
-								return
-							}
-
-							printcolor.Success(fmt.Sprintf("VM %s in group %s created successfully", vm.Name, vm.Group))
-						}
-					})
+					Do(createVM(o))
 			}
 		},
 	}
 	cmd.Flags().BoolVarP(&o.Root, "root", "r", false, "Create all VMs in the group")
 	return cmd
+}
+
+func createVM(o *CreateOptions) func(vm model.VirtualMachine) {
+	return func(vm model.VirtualMachine) {
+		printcolor.Info(fmt.Sprintf("Creating VM %s in group %s", vm.Name, vm.Group))
+		if _, _, err := common.ExecShell("limactl", "start", "--name="+vm.Name, vm.Template, "--tty=false"); err != nil {
+			printcolor.Error(fmt.Sprintf("Error creating VM %s in group %s: %v", vm.Name, vm.Group, err))
+			return
+		}
+		failedScripts := executeInitScripts(vm, o.Root)
+		printcolor.Success(fmt.Sprintf("VM %s in group %s created successfully", vm.Name, vm.Group))
+		if len(failedScripts) > 0 {
+			printcolor.Warning(fmt.Sprintf("Failed to execute script(s) %v", failedScripts))
+		}
+	}
+}
+
+func executeInitScripts(vm model.VirtualMachine, root bool) []string {
+	var failedScripts []string
+	for key, script := range vm.InitScript {
+		scriptStr, err := script.GetCommand()
+		if err != nil {
+			printcolor.Error(fmt.Sprintf("Error getting script for %s in %s: %v", key, vm.Name, err))
+			failedScripts = append(failedScripts, key)
+			continue
+		}
+		shellArgs := buildShellArgs(vm, root, "bash", "-c", scriptStr)
+		if _, _, err := common.ExecShell("limactl", shellArgs...); err != nil {
+			printcolor.Error(fmt.Sprintf("Error executing script for %s in %s: %v", key, vm.Name, err))
+			failedScripts = append(failedScripts, key)
+		}
+	}
+	return failedScripts
+}
+
+func buildShellArgs(vm model.VirtualMachine, root bool, args ...string) []string {
+	shellArgs := []string{"shell", vm.Name}
+	if root {
+		shellArgs = append(shellArgs, "sudo")
+	}
+	return append(shellArgs, args...)
 }
