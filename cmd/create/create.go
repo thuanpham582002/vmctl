@@ -62,7 +62,7 @@ func executeInitScripts(vm model.VirtualMachine, root bool) []string {
 			failedScripts = append(failedScripts, key)
 			continue
 		}
-		shellArgs := buildShellArgs(vm, root, "bash", "-c", scriptStr)
+		shellArgs := buildShellArgs(vm, root || script.Root, "bash", "-c", scriptStr)
 		if _, _, err := common.ExecShell("limactl", shellArgs...); err != nil {
 			printcolor.Error(fmt.Sprintf("Error executing script for %s in %s: %v", key, vm.Name, err))
 			failedScripts = append(failedScripts, key)

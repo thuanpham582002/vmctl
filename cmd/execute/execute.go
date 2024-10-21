@@ -55,9 +55,21 @@ func NewCmdExecute() *cobra.Command {
 
 func executeCommands(vm model.VirtualMachine, o *ExecuteOptions) {
 	for _, command := range o.Commands {
-		shellArgs := buildShellArgs(vm, o.Root, "bash", "-c", command)
+		scriptStr := ""
+		err := error(nil)
+		if _, ok := vm.InitScript[command]; ok {
+			scriptStr, err = vm.InitScript[command].GetCommand()
+		} else {
+			scriptStr = command
+		}
+		if err != nil {
+			printcolor.Warning(fmt.Sprintf("Error building script for %s in %s: %v", command, vm.Name, err))
+			continue
+		}
+		shellArgs := buildShellArgs(vm, o.Root, "bash", "-c", scriptStr)
 		if _, _, err := common.ExecShell("limactl", shellArgs...); err != nil {
 			printcolor.Error(fmt.Sprintf("Error executing command %s in VM %s in group %s: %v", vm.Name, vm.Group, err))
+			continue
 		}
 	}
 }
