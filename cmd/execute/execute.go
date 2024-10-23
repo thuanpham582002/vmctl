@@ -24,7 +24,7 @@ func NewExecuteOptions() *ExecuteOptions {
 func NewCmdExecute() *cobra.Command {
 	o := NewExecuteOptions()
 	cmd := &cobra.Command{
-		Use:               "exec <node_path...>",
+		Use:               "execute <node_path...>",
 		Short:             "Execute a new virtual machine",
 		ValidArgsFunction: completion.BashCompleteInstance,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -40,6 +40,7 @@ func NewCmdExecute() *cobra.Command {
 					})
 			}
 		},
+		Aliases: []string{"exec"},
 	}
 	flagSet := cmd.Flags()
 	flagSet.BoolVarP(&o.Root, "root", "r", false, "Execute all VMs in the group")

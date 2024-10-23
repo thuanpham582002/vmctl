@@ -24,6 +24,7 @@ func NewCmdDelete() *cobra.Command {
 					Do(deleteVM)
 			}
 		},
+		Aliases: []string{"del"},
 	}
 	return cmd
 }

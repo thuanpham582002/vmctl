@@ -2,33 +2,17 @@ package config
 
 import (
 	"encoding/json"
+	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 )
 
-func getConfigFilePath() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
-	}
-	return filepath.Join(homeDir, ".vmctl", "config.yaml")
-}
-
 func GetContextPath() (string, error) {
-	file, err := os.Open(getConfigFilePath())
-	if err != nil {
-		return "", err
+	if path, ok := viper.Get("current-context").(string); ok {
+		return path, nil
 	}
-	defer file.Close()
-
-	config := &Config{}
-	err = yaml.NewDecoder(file).Decode(config)
-	if err != nil {
-		return "", err
-	}
-
-	return config.CurrentContext, nil
+	return "", nil
 }
 
 func GetContextDir() (string, error) {

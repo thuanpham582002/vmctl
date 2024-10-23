@@ -58,7 +58,7 @@ func init() {
 
 func initConfig() {
 	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
+		viper.Set("current-context", cfgFile)
 	} else {
 		viper.AddConfigPath("$HOME/.vmctl")
 		viper.SetConfigName("config")
