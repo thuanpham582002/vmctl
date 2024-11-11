@@ -1,21 +1,23 @@
 package config
 
 import (
-	"github.com/bitfield/script"
 	"github.com/spf13/cobra"
 	"vmctl/util/config"
+	"vmctl/util/printcolor"
 )
 
 func NewCmdConfigView() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get-context",
+		Use:   "view",
 		Short: "Display the current-context",
 		Run: func(cmd *cobra.Command, args []string) {
-			contextPath, err := config.GetContextPath()
+			contextPath, err := config.GetListContext()
 			if err != nil {
-				panic(err)
+				printcolor.Error(err.Error())
 			}
-			script.NewPipe().Echo(contextPath)
+			for _, context := range contextPath {
+				printcolor.Print(context)
+			}
 		},
 	}
 	return cmd

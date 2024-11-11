@@ -42,7 +42,7 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
+	cobra.OnInitialize(InitConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.vmctl/config.yaml)")
 
 	rootCmd.AddCommand(
@@ -56,7 +56,7 @@ func init() {
 	)
 }
 
-func initConfig() {
+func InitConfig() {
 	if cfgFile != "" {
 		viper.Set("current-context", cfgFile)
 	} else {

@@ -21,7 +21,7 @@ func NewCmdDelete() *cobra.Command {
 			} else {
 				resource.NewBuilder().
 					SetNodePaths(args).
-					Do(deleteVM)
+					Do(DeleteVM)
 			}
 		},
 		Aliases: []string{"del"},
@@ -29,7 +29,7 @@ func NewCmdDelete() *cobra.Command {
 	return cmd
 }
 
-func deleteVM(vm model.VirtualMachine) {
+func DeleteVM(vm model.VirtualMachine) {
 	printcolor.Info(fmt.Sprintf("Deleting VM %s in group %s", vm.Name, vm.Group))
 	if _, _, err := common.ExecShell("limactl", "stop", vm.Name); err != nil {
 		printcolor.Error(fmt.Sprintf("Error deleting VM %s in group %s: %v", vm.Name, vm.Group, err))

@@ -6,6 +6,7 @@ import (
 	"vmctl/common"
 	"vmctl/model"
 	"vmctl/util/completion"
+	"vmctl/util/limashell"
 	"vmctl/util/printcolor"
 	"vmctl/util/resource"
 )
@@ -54,19 +55,12 @@ func executeInitScripts(vm model.VirtualMachine) []string {
 			printcolor.Warning(fmt.Sprintf("Error building script for %s in %s: %v", key, vm.Name, err))
 			continue
 		}
-		shellArgs := buildShellArgs(vm, script.Root, scriptCommand)
+		shellArgs := limashell.BuildShellArgs(vm, script.Root, scriptCommand)
+		printcolor.Info(fmt.Sprintf("Debug here"))
 		if _, _, err := common.ExecShell("limactl", shellArgs...); err != nil {
 			printcolor.Error(fmt.Sprintf("Error executing script for %s in %s: %v", key, vm.Name, err))
 			failedScripts = append(failedScripts, key)
 		}
 	}
 	return failedScripts
-}
-
-func buildShellArgs(vm model.VirtualMachine, root bool, args ...string) []string {
-	shellArgs := []string{"shell", vm.Name}
-	if root {
-		shellArgs = append(shellArgs, "sudo")
-	}
-	return append(shellArgs, args...)
 }

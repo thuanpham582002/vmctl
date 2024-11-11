@@ -3,15 +3,18 @@ package create
 import (
 	"fmt"
 	"github.com/spf13/cobra"
+	del "vmctl/cmd/delete"
 	"vmctl/common"
 	"vmctl/model"
 	"vmctl/util/completion"
+	"vmctl/util/limashell"
 	"vmctl/util/printcolor"
 	"vmctl/util/resource"
 )
 
 type CreateOptions struct {
-	Root bool
+	Root  bool
+	Force bool
 }
 
 func NewCreateOptions() *CreateOptions {
@@ -35,12 +38,16 @@ func NewCmdCreate() *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVarP(&o.Root, "root", "r", false, "Create all VMs in the group")
+	cmd.Flags().BoolVarP(&o.Force, "force", "f", false, "Force create VMs even if they already exist")
 	return cmd
 }
 
 func createVM(o *CreateOptions) func(vm model.VirtualMachine) {
 	return func(vm model.VirtualMachine) {
 		printcolor.Info(fmt.Sprintf("Creating VM %s in group %s", vm.Name, vm.Group))
+		if o.Force {
+			del.DeleteVM(vm)
+		}
 		if _, _, err := common.ExecShell("limactl", "start", "--name="+vm.Name, vm.Template, "--tty=false"); err != nil {
 			printcolor.Error(fmt.Sprintf("Error creating VM %s in group %s: %v", vm.Name, vm.Group, err))
 			return
@@ -62,19 +69,11 @@ func executeInitScripts(vm model.VirtualMachine, root bool) []string {
 			failedScripts = append(failedScripts, key)
 			continue
 		}
-		shellArgs := buildShellArgs(vm, root || script.Root, "bash", "-c", scriptStr)
+		shellArgs := limashell.BuildShellArgs(vm, root || script.Root, scriptStr)
 		if _, _, err := common.ExecShell("limactl", shellArgs...); err != nil {
 			printcolor.Error(fmt.Sprintf("Error executing script for %s in %s: %v", key, vm.Name, err))
 			failedScripts = append(failedScripts, key)
 		}
 	}
 	return failedScripts
-}
-
-func buildShellArgs(vm model.VirtualMachine, root bool, args ...string) []string {
-	shellArgs := []string{"shell", vm.Name}
-	if root {
-		shellArgs = append(shellArgs, "sudo")
-	}
-	return append(shellArgs, args...)
 }

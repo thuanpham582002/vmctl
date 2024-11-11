@@ -7,14 +7,16 @@ import (
 	"vmctl/common"
 	"vmctl/model"
 	"vmctl/util/completion"
+	"vmctl/util/limashell"
 	"vmctl/util/printcolor"
 	"vmctl/util/resource"
 )
 
 type ExecuteOptions struct {
-	Root     bool
-	Commands []string
-	Files    []string
+	Root         bool
+	Commands     []string
+	Files        []string
+	ContinueFrom string
 }
 
 func NewExecuteOptions() *ExecuteOptions {
@@ -37,6 +39,23 @@ func NewCmdExecute() *cobra.Command {
 						printcolor.Info(fmt.Sprintf("Executing VM %s in group %s", vm.Name, vm.Group))
 						executeCommands(vm, o)
 						executeFiles(vm, o)
+						if o.ContinueFrom != "" {
+							isHashFound := false
+							for key, _ := range vm.InitScript.FromOldest() {
+								if key == o.ContinueFrom {
+									isHashFound = true
+								}
+								if isHashFound {
+									o.Commands = append(o.Commands, key)
+								}
+							}
+							if isHashFound {
+								printcolor.Print(fmt.Sprintf("Continue from %s", o.ContinueFrom))
+								executeCommands(vm, o)
+							} else {
+								printcolor.Warning(fmt.Sprintf("Continue from %s not found", o.ContinueFrom))
+							}
+						}
 					})
 			}
 		},
@@ -46,7 +65,12 @@ func NewCmdExecute() *cobra.Command {
 	flagSet.BoolVarP(&o.Root, "root", "r", false, "Execute all VMs in the group")
 	cmd.Flags().StringSliceVarP(&o.Commands, "command", "c", []string{}, "Execute a list of commands")
 	cmd.Flags().StringSliceVarP(&o.Files, "file", "f", []string{}, "Execute a list of files")
+	cmd.Flags().StringVarP(&o.ContinueFrom, "continue-from", "", "", "Continue from a specific command")
 	err := cmd.RegisterFlagCompletionFunc("command", completion.BashCompleteForCommands)
+	if err != nil {
+		printcolor.Error(fmt.Sprintf("Error registering flag completion function: %v", err))
+	}
+	err = cmd.RegisterFlagCompletionFunc("continue-from", completion.BashCompleteForCommands)
 	if err != nil {
 		printcolor.Error(fmt.Sprintf("Error registering flag completion function: %v", err))
 	}
@@ -69,7 +93,7 @@ func executeCommands(vm model.VirtualMachine, o *ExecuteOptions) {
 			printcolor.Warning(fmt.Sprintf("Error building script for %s in %s: %v", command, vm.Name, err))
 			continue
 		}
-		shellArgs := buildShellArgs(vm, root, "bash", "-c", scriptStr)
+		shellArgs := limashell.BuildShellArgs(vm, root, scriptStr)
 		if _, _, err := common.ExecShell("limactl", shellArgs...); err != nil {
 			printcolor.Error(fmt.Sprintf("Error executing command %s in VM %s in group %s: %v", vm.Name, vm.Group, err))
 			continue
@@ -79,7 +103,7 @@ func executeCommands(vm model.VirtualMachine, o *ExecuteOptions) {
 
 func executeFiles(vm model.VirtualMachine, o *ExecuteOptions) {
 	for _, file := range o.Files {
-		shellArgs := buildShellArgs(vm, o.Root, "bash", "-c")
+		shellArgs := limashell.BuildShellArgs(vm, o.Root)
 		if fileData, err := os.ReadFile(file); err == nil {
 			shellArgs = append(shellArgs, string(fileData))
 			if _, _, err := common.ExecShell("limactl", shellArgs...); err != nil {
@@ -87,12 +111,4 @@ func executeFiles(vm model.VirtualMachine, o *ExecuteOptions) {
 			}
 		}
 	}
-}
-
-func buildShellArgs(vm model.VirtualMachine, root bool, args ...string) []string {
-	shellArgs := []string{"shell", vm.Name}
-	if root {
-		shellArgs = append(shellArgs, "sudo")
-	}
-	return append(shellArgs, args...)
 }
