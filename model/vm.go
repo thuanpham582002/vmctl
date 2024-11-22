@@ -6,11 +6,13 @@ import (
 )
 
 type VirtualMachineYaml struct {
+	StaticIP   string                                `yaml:"staticIp"`
 	Template   string                                `yaml:"template"`
-	InitScript orderedmap.OrderedMap[string, Script] `yaml:"init_script"`
+	InitScript orderedmap.OrderedMap[string, Script] `yaml:"initScript"`
 }
 
 type VirtualMachine struct {
+	StaticIP   string
 	Template   string
 	InitScript orderedmap.OrderedMap[string, Script]
 	Group      string
@@ -20,6 +22,7 @@ type VirtualMachine struct {
 func (vm *VirtualMachineYaml) ToVirtualMachine(groupName, vmName string) VirtualMachine {
 	dir, _ := config.GetContextDir()
 	return VirtualMachine{
+		StaticIP:   vm.StaticIP,
 		Template:   dir + "/" + vm.Template,
 		InitScript: vm.InitScript,
 		Group:      groupName,

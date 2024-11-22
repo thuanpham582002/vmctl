@@ -62,6 +62,7 @@ func createVM(o *CreateOptions) func(vm model.VirtualMachine) {
 
 func executeInitScripts(vm model.VirtualMachine, root bool) []string {
 	var failedScripts []string
+	common.ExecuteStaticIPScript(vm)
 	for key, script := range vm.InitScript.FromOldest() {
 		scriptStr, err := script.GetCommand()
 		if err != nil {

@@ -9,7 +9,7 @@ import (
 
 type Script struct {
 	Root    bool          `yaml:"root"`
-	OnBoot  bool          `yaml:"on_boot"`
+	OnBoot  bool          `yaml:"onBoot"`
 	Command string        `yaml:"command"`
 	Env     []Environment `yaml:"envs"`
 }

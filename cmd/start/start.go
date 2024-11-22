@@ -45,6 +45,7 @@ func StartVM(vm model.VirtualMachine) {
 }
 
 func executeInitScripts(vm model.VirtualMachine) []string {
+	common.ExecuteStaticIPScript(vm)
 	var failedScripts []string
 	for key, script := range vm.InitScript.FromOldest() {
 		if !script.OnBoot {
