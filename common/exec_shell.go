@@ -30,9 +30,26 @@ func ExecShell(name string, command ...string) (string, int, error) {
 	return cmd.String(), 0, nil
 }
 
+func ExecShellWithOutput(name string, command ...string) (string, int, error) {
+	cmd := exec.Command(name, command...)
+	printcolor.Info(fmt.Sprintf("Executing command: \n%s", fmt.Sprintf("%s", cmd.String())))
+	output, err := cmd.CombinedOutput()
+	// Kiểm tra exit code
+	if err != nil {
+		printcolor.Error(err.Error())
+		var exitError *exec.ExitError
+		if errors.As(err, &exitError) {
+			// Lấy exit code từ ExitError
+			exitCode := exitError.ExitCode()
+			return string(output), exitCode, err
+		}
+	}
+	return string(output), 0, nil
+}
+
 func GetNetplanConfig(vm model.VirtualMachine) (string, error) {
-	shellArgs := limashell.BuildShellArgs(vm, true, "cat", "/etc/netplan/50-cloud-init.yaml")
-	output, _, err := ExecShell("limactl", shellArgs...)
+	shellArgs := limashell.BuildShellArgs(vm, true, "cat /etc/netplan/50-cloud-init.yaml")
+	output, _, err := ExecShellWithOutput("limactl", shellArgs...)
 	if err != nil {
 		return "", err
 	}
@@ -88,6 +105,13 @@ func ExecuteStaticIPScript(vm model.VirtualMachine) {
 	shellArgs := limashell.BuildShellArgs(vm, true, writeConfigCmd)
 	if _, _, err := ExecShell("limactl", shellArgs...); err != nil {
 		printcolor.Error(fmt.Sprintf("Error writing netplan config for %s in %s: %v", vm.Name, vm.Group, err))
+		return
+	}
+	// Apply the netplan config
+	applyCmd := "netplan apply"
+	shellArgs = limashell.BuildShellArgs(vm, true, applyCmd)
+	if _, _, err := ExecShell("limactl", shellArgs...); err != nil {
+		printcolor.Error(fmt.Sprintf("Error applying netplan config for %s in %s: %v", vm.Name, vm.Group, err))
 		return
 	}
 	printcolor.Success(fmt.Sprintf("Static IP set for %s in %s", vm.Name, vm.Group))
